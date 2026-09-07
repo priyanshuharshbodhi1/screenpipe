@@ -34,6 +34,8 @@ import {
   TRIAL_ACTIVATION_UNLOCKED_STEP,
 } from "@/lib/first-run/trial-activation";
 import { readOnboardingCheckoutStatus } from "@/lib/onboarding-checkout-navigation";
+import { StartupAuthenticationContext } from "@/components/app-entitlement-gate";
+import { shouldRestoreOnboardingLogin } from "@/lib/onboarding-auth-restore";
 
 type SlideKey =
   | "login"
@@ -316,6 +318,9 @@ export default function OnboardingPage() {
   const { settings, isSettingsLoaded } = useSettings();
   const user = settings.user as AppUser | null | undefined;
   const isLoggedIn = Boolean(user?.token);
+  const startupAuthenticationStatus = React.useContext(
+    StartupAuthenticationContext,
+  );
   const previousLoginStateRef = React.useRef<boolean | null>(null);
   const completedForHiddenUiRef = React.useRef(false);
   const transitioningRef = React.useRef(false);
@@ -525,7 +530,19 @@ export default function OnboardingPage() {
           // A saved step must not resume onto a slide that this device or its
           // managed policy is no longer eligible to see.
           const mappedSlide =
-            mapped === "acquisition" && isManagedDeployment
+            // Post-login steps assume native startup authentication succeeded.
+            // If the session was lost between launches, restoring one of those
+            // steps calls spawn_screenpipe while signed out and strands the user
+            // on the engine error screen. Return consumer installs to the login
+            // gate so they can re-authenticate before setup resumes.
+            shouldRestoreOnboardingLogin({
+              isManagedDeployment,
+              startupAuthenticationStatus,
+              isLoggedIn,
+              mappedSlide: mapped,
+            })
+              ? "login"
+              : mapped === "acquisition" && isManagedDeployment
               ? // A managed install saved mid-acquisition, from a build that
                 // still asked, resumes at the step that follows it rather than
                 // at the engine: permissions still have to be granted.
@@ -543,9 +560,11 @@ export default function OnboardingPage() {
     checkoutReturnStatus,
     isManagedDeployment,
     isManagedDeploymentResolved,
+    isLoggedIn,
     isSettingsLoaded,
     router,
     shouldShowPlanSelection,
+    startupAuthenticationStatus,
   ]);
 
   useEffect(() => {

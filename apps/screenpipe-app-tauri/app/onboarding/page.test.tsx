@@ -197,6 +197,7 @@ vi.mock("posthog-js", () => ({
 }));
 
 import OnboardingPage from "./page";
+import { StartupAuthenticationContext } from "@/components/app-entitlement-gate";
 import {
   TRIAL_ACTIVATION_ASSIGNMENT_SESSION_KEY,
   TRIAL_ACTIVATION_CHECKOUT_STATE_KEY,
@@ -855,6 +856,36 @@ describe("enterprise onboarding authentication", () => {
       }),
     );
     expect(screen.queryByText("plan selection")).not.toBeInTheDocument();
+  });
+
+  it("returns a signed-out consumer with a persisted engine step to login", async () => {
+    mocks.enterprisePolicy.isManagedDeployment = false;
+    mocks.settings.user = null;
+    onboardingData.currentStep = "engine";
+
+    render(
+      <StartupAuthenticationContext.Provider value="logged_out">
+        <OnboardingPage />
+      </StartupAuthenticationContext.Provider>,
+    );
+
+    expect(await screen.findByText("regular sign in")).toBeInTheDocument();
+    expect(screen.queryByText("engine")).not.toBeInTheDocument();
+  });
+
+  it("restores an authenticated consumer after a logged-out startup", async () => {
+    mocks.enterprisePolicy.isManagedDeployment = false;
+    mocks.settings.user = { token: "tok" };
+    onboardingData.currentStep = "engine";
+
+    render(
+      <StartupAuthenticationContext.Provider value="logged_out">
+        <OnboardingPage />
+      </StartupAuthenticationContext.Provider>,
+    );
+
+    expect(await screen.findByText("engine")).toBeInTheDocument();
+    expect(screen.queryByText("regular sign in")).not.toBeInTheDocument();
   });
 
   it("does not restore managed onboarding onto consumer pricing", async () => {
