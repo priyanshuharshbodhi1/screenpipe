@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "suite": "screenpipe-app-coding-agent-regressions",
-  "dataset_version": "2026-09-07.1",
+  "dataset_version": "2026-09-08.1",
   "suite_type": "regression",
   "owner": "screenpipe engineering",
   "policy": {
@@ -1092,6 +1092,58 @@
           }
         ],
         "command": "node crates/screenpipe-audio/eval-meeting-audio-fallback.mjs && cargo test -p screenpipe-audio --lib eval_meeting_audio_fallback -- --test-threads=2"
+      }
+    },
+    {
+      "id": "app-referral-lookup-session-preservation",
+      "name": "Keep authenticated accounts signed in during referral lookup",
+      "source": {
+        "kind": "git_regression",
+        "fix_commit": "1494836d8f34d2a388ae3393ac0e2d802b1c9d7a",
+        "pull_request": "https://github.com/screenpipe/screenpipe/pull/6959",
+        "issue": "https://github.com/screenpipe/screenpipe/issues/6943"
+      },
+      "base_ref": "1d9aff4972dc25cc5984ce995ccfceb5ee95f6b9",
+      "oracle_ref": "1494836d8f34d2a388ae3393ac0e2d802b1c9d7a",
+      "oracle_paths": [
+        "apps/screenpipe-app-tauri/components/settings/referral-card.tsx"
+      ],
+      "gate": "advisory",
+      "trigger_paths": [
+        "apps/screenpipe-app-tauri/components/settings/referral-card.tsx",
+        "apps/screenpipe-app-tauri/lib/auth-guard.tsx",
+        "apps/screenpipe-app-tauri/lib/web-url.ts"
+      ],
+      "tags": [
+        "regression",
+        "escaped-failure",
+        "auth",
+        "session-preservation",
+        "settings",
+        "referral",
+        "false-sign-out"
+      ],
+      "prompt": "Opening referral settings can clear a valid signed-in account when the referral lookup is rejected as unauthenticated. A valid account with no referral code should remain signed in and see the eligibility explanation. Make referral lookup work with the current account, while preserving genuine session-expiry handling and the distinction between authentication failures and unrelated service errors. Preserve backend-issued referral links, copying, authenticated invitations, retry after a transient failure, and the sign-in option when no account is present.",
+      "agent_timeout_seconds": 900,
+      "grader_dependency_links": [
+        {
+          "source_path": "apps/screenpipe-app-tauri/node_modules",
+          "destination_path": "apps/screenpipe-app-tauri/node_modules"
+        }
+      ],
+      "grader": {
+        "timeout_seconds": 300,
+        "fixtures": [
+          {
+            "source_ref": "1494836d8f34d2a388ae3393ac0e2d802b1c9d7a",
+            "source_path": "apps/screenpipe-app-tauri/components/settings/referral-card.test.tsx"
+          },
+          {
+            "source_ref": "1494836d8f34d2a388ae3393ac0e2d802b1c9d7a",
+            "source_path": "apps/screenpipe-app-tauri/lib/auth-guard.test.tsx"
+          }
+        ],
+        "command": "cd apps/screenpipe-app-tauri && NODE_OPTIONS=--localstorage-file=.eval-localstorage bun x vitest run --config vitest.config.ts components/settings/referral-card.test.tsx lib/auth-guard.test.tsx"
       }
     }
   ]
